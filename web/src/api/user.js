@@ -261,18 +261,38 @@ export function convertTypingPatternToVector(typingPattern) {
   try {
     const vector = [];
     
-    // 키 다운/업 쌍 찾기
+    // 키 다운/업 쌍 찾기 (개선된 로직)
     const keyPairs = [];
-    for (let i = 0; i < typingPattern.length - 1; i++) {
-      if (typingPattern[i].type === 'keydown' && typingPattern[i+1].type === 'keyup' && 
-          typingPattern[i].key === typingPattern[i+1].key) {
+    const processedKeys = new Set();
+    
+    // 모든 키 다운 이벤트를 먼저 수집
+    const keyDownEvents = typingPattern.filter(event => event.type === 'keydown');
+    
+    for (const keyDownEvent of keyDownEvents) {
+      const key = keyDownEvent.key;
+      
+      // 이미 처리된 키는 건너뛰기
+      if (processedKeys.has(key)) continue;
+      
+      // 해당 키의 키 업 이벤트 찾기
+      const keyUpEvent = typingPattern.find(event => 
+        event.type === 'keyup' && 
+        event.key === key && 
+        event.timestamp > keyDownEvent.timestamp
+      );
+      
+      if (keyUpEvent) {
         keyPairs.push({
-          key: typingPattern[i].key,
-          pressTime: typingPattern[i+1].timestamp - typingPattern[i].timestamp,
-          timestamp: typingPattern[i].timestamp
+          key: key,
+          pressTime: keyUpEvent.timestamp - keyDownEvent.timestamp,
+          timestamp: keyDownEvent.timestamp
         });
+        processedKeys.add(key);
       }
     }
+    
+    // 타임스탬프 순으로 정렬
+    keyPairs.sort((a, b) => a.timestamp - b.timestamp);
     
     // 각 키 쌍을 벡터로 변환 (2차원 배열)
     for (let i = 0; i < keyPairs.length; i++) {
@@ -290,6 +310,12 @@ export function convertTypingPatternToVector(typingPattern) {
       // 벡터 요소: [Dwell Time (ms), Flight Time (ms)]
       vector.push([dwellTime, flightTime]);
     }
+    
+    console.log('타이핑 패턴 분석:');
+    console.log('  전체 이벤트 수:', typingPattern.length);
+    console.log('  키 다운 이벤트 수:', keyDownEvents.length);
+    console.log('  찾은 키 쌍 수:', keyPairs.length);
+    console.log('  키 쌍 상세:', keyPairs.map(pair => `${pair.key}: ${pair.pressTime}ms`));
     
     console.log('변환된 벡터 (2차원 배열):', vector);
     return vector;
