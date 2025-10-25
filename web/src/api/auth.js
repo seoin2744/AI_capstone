@@ -4,6 +4,7 @@
 console.log('인증 API 서비스 로드됨');
 
 import { apiPost, apiGet } from './apiClient.js';
+import { convertTypingPatternToVector } from './user.js';
 
 // 행동 패턴 예측 요청
 export async function predictBehavior(payload) {
@@ -15,23 +16,14 @@ export async function predictBehavior(payload) {
       throw new Error('사용자 ID가 필요합니다.');
     }
     
-    if (!payload.keystrokes && !payload.mouse_movements) {
-      throw new Error('키스트로크 또는 마우스 움직임 데이터가 필요합니다.');
+    if (!payload.keystroke_vector) {
+      throw new Error('키스트로크 벡터 데이터가 필요합니다.');
     }
     
     // 서버에 전송할 데이터 준비
     const predictionData = {
       user_id: payload.user_id,
-      timestamp: payload.timestamp || Date.now(),
-      session_duration: payload.session_duration || 0,
-      keystrokes: payload.keystrokes || [],
-      mouse_movements: payload.mouse_movements || [],
-      urgency: payload.urgency || false,
-      metadata: {
-        user_agent: navigator.userAgent,
-        url: window.location.href,
-        prediction_source: 'web_app'
-      }
+      keystroke_vector: payload.keystroke_vector
     };
     
     console.log('예측 데이터 준비 완료:', predictionData);
@@ -43,10 +35,8 @@ export async function predictBehavior(payload) {
       
       return {
         success: true,
-        prediction: response.data,
-        anomalyScore: response.data.anomaly_score || 0,
-        confidence: response.data.confidence || 0,
-        recommendation: response.data.recommendation || 'normal'
+        isAnomalous: response.data.is_anomalous || false,
+        data: response.data
       };
     } else {
       throw new Error(response.error || '행동 패턴 예측에 실패했습니다.');
@@ -56,9 +46,7 @@ export async function predictBehavior(payload) {
     console.error('행동 패턴 예측 오류:', error);
     return {
       success: false,
-      error: error.message,
-      anomalyScore: 0,
-      confidence: 0
+      error: error.message
     };
   }
 }
@@ -107,16 +95,30 @@ export async function attemptLogin(loginData) {
       throw new Error('이메일과 비밀번호가 필요합니다.');
     }
     
-    if (!loginData.typingPattern || !Array.isArray(loginData.typingPattern)) {
-      throw new Error('타이핑 패턴 데이터가 필요합니다.');
+    // 패턴 분석을 건너뛰지 않는 경우에만 타이핑 패턴 검사
+    if (!loginData.skipPatternAnalysis) {
+      if (!loginData.typingPattern || !Array.isArray(loginData.typingPattern)) {
+        throw new Error('타이핑 패턴 데이터가 필요합니다.');
+      }
+      
+      // 타이핑 패턴을 벡터로 변환
+      const typingVector = convertTypingPatternToVector(loginData.typingPattern);
+      
+      if (typingVector.length === 0) {
+        throw new Error('유효한 타이핑 패턴이 필요합니다.');
+      }
     }
+    
+    // 타이핑 패턴을 벡터로 변환 (패턴 분석 건너뛰기인 경우 빈 배열)
+    const typingVector = loginData.skipPatternAnalysis ? [] : convertTypingPatternToVector(loginData.typingPattern);
     
     // 로그인 데이터 준비
     const loginPayload = {
       email: loginData.email,
       password: loginData.password,
-      typing_pattern: loginData.typingPattern,
+      typing_pattern: typingVector,
       timestamp: Date.now(),
+      skip_pattern_analysis: loginData.skipPatternAnalysis || false, // 패턴 분석 건너뛰기 플래그
       metadata: {
         user_agent: navigator.userAgent,
         login_source: 'web_app',

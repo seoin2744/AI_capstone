@@ -6,7 +6,7 @@ console.log('AI 인증 설정 파일 로드됨');
 // 기본 설정
 export const CONFIG = {
   // API 기본 URL - .env에서 오버라이드 가능
-  BASE_URL: "http://192.168.0.10:8000",
+  BASE_URL: "http://210.119.108.227:8080",
   
   // 데이터 전송 간격 (밀리초)
   SEND_INTERVAL: 3000,
@@ -69,7 +69,7 @@ export function updateConfig(newConfig) {
 // 설정 초기화 함수
 export function resetConfig() {
   const defaultConfig = {
-    BASE_URL: "http://192.168.0.10:8000",
+    BASE_URL: "http://210.119.108.227:8080",
     SEND_INTERVAL: 3000,
     ANOMALY_THRESHOLD: 0.8,
     MIN_DATA_POINTS: 5,

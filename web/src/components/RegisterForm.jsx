@@ -1,8 +1,9 @@
 // 회원가입 폼 컴포넌트
 // 타이핑 패턴 분석을 통한 회원가입 처리
 
-import React, { useState, useRef, useEffect } from 'react';
-import { registerUser, calculateTypingSimilarity } from '../api/user.js';
+import React, { useState, useRef } from 'react';
+import { registerUser, convertTypingPatternToVector } from '../api/user.js';
+import PasswordTrainingForm from './PasswordTrainingForm.jsx';
 
 console.log('회원가입 폼 컴포넌트 로드됨');
 
@@ -15,28 +16,36 @@ const RegisterForm = ({ onSuccess, onError }) => {
     name: ''
   });
   
-  const [typingPatterns, setTypingPatterns] = useState({
-    password: [],
-    passwordConfirm: []
-  });
-  
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [similarityScore, setSimilarityScore] = useState(0);
-  
-  // 타이핑 패턴 수집 상태
-  const [isCollectingPattern, setIsCollectingPattern] = useState(true); // 자동으로 시작
-  const [patternCollectionStep, setPatternCollectionStep] = useState(0); // 0: 비밀번호, 1: 재입력
-  const [showSimilarityPopup, setShowSimilarityPopup] = useState(false);
+  const [showTrainingForm, setShowTrainingForm] = useState(false);
+  const [registrationData, setRegistrationData] = useState(null);
+  const [typingPatterns, setTypingPatterns] = useState({ password: [], passwordConfirm: [] });
+  const [isCollectingPassword, setIsCollectingPassword] = useState(false); // 비밀번호 필드에 포커스 여부
+  const [isCollectingPasswordConfirm, setIsCollectingPasswordConfirm] = useState(false); // 비밀번호 확인 필드에 포커스 여부
   
   // refs
   const passwordRef = useRef(null);
   const passwordConfirmRef = useRef(null);
   
+  // 입력 필드 변경 처리
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // 오류 메시지 제거
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
   
-  // 키보드 이벤트 처리
+  // 키보드 이벤트 처리 (타이핑 패턴 수집) - 비밀번호 필드에만 수집
   const handleKeyEvent = (event, field) => {
-    if (!isCollectingPattern) return;
+    // 비밀번호 또는 비밀번호 확인 필드에 포커스가 있을 때만 수집
+    if ((field === 'password' && !isCollectingPassword) ||
+        (field === 'passwordConfirm' && !isCollectingPasswordConfirm)) {
+      return;
+    }
     
     const timestamp = Date.now();
     const keyData = {
@@ -54,46 +63,29 @@ const RegisterForm = ({ onSuccess, onError }) => {
     console.log(`${field} 타이핑 패턴 수집:`, keyData);
   };
   
-  // 입력 필드 변경 처리
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // 오류 메시지 제거
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+  // 포커스 인 이벤트 처리
+  const handleFocus = (field) => {
+    if (field === 'password') {
+      setIsCollectingPassword(true);
+      console.log('비밀번호 필드 포커스 - 타이핑 패턴 수집 시작');
+    } else if (field === 'passwordConfirm') {
+      setIsCollectingPasswordConfirm(true);
+      console.log('비밀번호 확인 필드 포커스 - 타이핑 패턴 수집 시작');
     }
   };
   
-  // 비밀번호 재입력 완료 시 유사도 계산
-  useEffect(() => {
-    if (typingPatterns.password.length > 0 && typingPatterns.passwordConfirm.length > 0) {
-      const similarity = calculateTypingSimilarity(
-        typingPatterns.password,
-        typingPatterns.passwordConfirm
-      );
-      
-      setSimilarityScore(similarity);
-      console.log('타이핑 패턴 유사도:', similarity);
-      
-      // 유사도가 낮으면 팝업 표시
-      if (similarity < 0.8) {
-        setShowSimilarityPopup(true);
-        setErrors(prev => ({
-          ...prev,
-          passwordConfirm: '타이핑 패턴이 일치하지 않습니다. 다시 입력해주세요.'
-        }));
-      } else {
-        setShowSimilarityPopup(false);
-        // 오류 메시지 제거
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.passwordConfirm;
-          return newErrors;
-        });
-      }
+  // 포커스 아웃 이벤트 처리
+  const handleBlur = (field) => {
+    if (field === 'password') {
+      setIsCollectingPassword(false);
+      console.log('비밀번호 필드 포커스 아웃 - 타이핑 패턴 수집 중단');
+    } else if (field === 'passwordConfirm') {
+      setIsCollectingPasswordConfirm(false);
+      console.log('비밀번호 확인 필드 포커스 아웃 - 타이핑 패턴 수집 중단');
     }
-  }, [typingPatterns]);
+  };
+  
+
   
   // 폼 제출 처리
   const handleSubmit = async (e) => {
@@ -111,8 +103,8 @@ const RegisterForm = ({ onSuccess, onError }) => {
     
     if (!formData.password) {
       newErrors.password = '비밀번호를 입력해주세요.';
-    } else if (formData.password.length < 8) {
-      newErrors.password = '비밀번호는 최소 8자 이상이어야 합니다.';
+    } else if (formData.password.length < 10) {
+      newErrors.password = '비밀번호는 최소 10자 이상이어야 합니다.';
     }
     
     if (!formData.passwordConfirm) {
@@ -125,12 +117,6 @@ const RegisterForm = ({ onSuccess, onError }) => {
       newErrors.name = '이름을 입력해주세요.';
     }
     
-    // 타이핑 패턴 유사도 검사
-    if (similarityScore < 0.8) {
-      setShowSimilarityPopup(true);
-      newErrors.passwordConfirm = '타이핑 패턴이 일치하지 않습니다. 다시 입력해주세요.';
-    }
-    
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -140,30 +126,35 @@ const RegisterForm = ({ onSuccess, onError }) => {
     setErrors({});
     
     try {
-      // 평균 타이핑 패턴 계산
-      const averagePattern = calculateAveragePattern([
-        ...typingPatterns.password,
-        ...typingPatterns.passwordConfirm
-      ]);
+      console.log('회원가입 데이터 전송:', formData);
       
+      // 타이핑 패턴을 벡터로 변환
+      const passwordVector = convertTypingPatternToVector(typingPatterns.password);
+      const passwordConfirmVector = convertTypingPatternToVector(typingPatterns.passwordConfirm);
+      
+      console.log('수집된 타이핑 패턴:', typingPatterns);
+      console.log('비밀번호 벡터:', passwordVector);
+      console.log('비밀번호 확인 벡터:', passwordConfirmVector);
+      
+      // 회원가입 API 호출 (타이핑 패턴 벡터 포함)
       const registrationData = {
         ...formData,
-        typingPattern: averagePattern
+        typing_pattern: passwordVector
       };
-      
-      console.log('회원가입 데이터 전송:', registrationData);
       
       const result = await registerUser(registrationData);
       
       if (result.success) {
         console.log('회원가입 성공:', result);
-        onSuccess && onSuccess(result);
         
-        // 폼 초기화
-        setFormData({ email: '', password: '', passwordConfirm: '', name: '' });
-        setTypingPatterns({ password: [], passwordConfirm: [] });
-        setSimilarityScore(0);
-        setShowSimilarityPopup(false);
+        // 회원가입 데이터 저장 및 훈련 화면으로 전환
+        setRegistrationData({
+          userId: result.user?.user_id || localStorage.getItem('user_id'),
+          userEmail: formData.email,
+          password: formData.password
+        });
+        
+        setShowTrainingForm(true);
       } else {
         console.error('회원가입 실패:', result.error);
         setErrors({ general: result.error });
@@ -179,39 +170,37 @@ const RegisterForm = ({ onSuccess, onError }) => {
     }
   };
   
-  // 평균 타이핑 패턴 계산
-  const calculateAveragePattern = (patterns) => {
-    if (patterns.length === 0) return [];
+  // 훈련 완료 처리
+  const handleTrainingComplete = (result) => {
+    console.log('훈련 완료:', result);
     
-    // 키 다운/업 쌍 찾기
-    const pairs = [];
-    for (let i = 0; i < patterns.length - 1; i++) {
-      if (patterns[i].type === 'keydown' && patterns[i+1].type === 'keyup' && 
-          patterns[i].key === patterns[i+1].key) {
-        pairs.push({
-          key: patterns[i].key,
-          pressTime: patterns[i+1].timestamp - patterns[i].timestamp,
-          timestamp: patterns[i].timestamp
-        });
-      }
+    if (result.success) {
+      console.log('회원가입 및 훈련 완료');
+      onSuccess && onSuccess(result);
+      
+      // 폼 초기화
+      setFormData({ email: '', password: '', passwordConfirm: '', name: '' });
+      setShowTrainingForm(false);
+      setRegistrationData(null);
+    } else {
+      console.error('훈련 실패:', result.error);
+      setErrors({ general: result.error });
+      setShowTrainingForm(false);
+      setRegistrationData(null);
     }
-    
-    return pairs;
   };
   
-  // 패턴 수집 단계별 안내 메시지
-  const getPatternCollectionMessage = () => {
-    if (!isCollectingPattern) return '';
-    
-    switch (patternCollectionStep) {
-      case 0:
-        return '비밀번호를 입력해주세요. 타이핑 패턴을 분석합니다.';
-      case 1:
-        return '비밀번호를 다시 입력해주세요. 패턴 일치도를 확인합니다.';
-      default:
-        return '';
-    }
-  };
+  // 훈련 화면이 활성화된 경우
+  if (showTrainingForm && registrationData) {
+    return (
+      <PasswordTrainingForm
+        userId={registrationData.userId}
+        userEmail={registrationData.userEmail}
+        password={registrationData.password}
+        onComplete={handleTrainingComplete}
+      />
+    );
+  }
   
   return (
     <div className="register-form">
@@ -263,10 +252,12 @@ const RegisterForm = ({ onSuccess, onError }) => {
             name="password"
             value={formData.password}
             onChange={handleInputChange}
+            onFocus={() => handleFocus('password')}
+            onBlur={() => handleBlur('password')}
             onKeyDown={(e) => handleKeyEvent(e, 'password')}
             onKeyUp={(e) => handleKeyEvent(e, 'password')}
             className={errors.password ? 'error' : ''}
-            placeholder="비밀번호를 입력하세요 (최소 8자)"
+            placeholder="비밀번호를 입력하세요 (최소 10자)"
             disabled={isLoading}
           />
           {errors.password && <span className="error-text">{errors.password}</span>}
@@ -281,6 +272,8 @@ const RegisterForm = ({ onSuccess, onError }) => {
             name="passwordConfirm"
             value={formData.passwordConfirm}
             onChange={handleInputChange}
+            onFocus={() => handleFocus('passwordConfirm')}
+            onBlur={() => handleBlur('passwordConfirm')}
             onKeyDown={(e) => handleKeyEvent(e, 'passwordConfirm')}
             onKeyUp={(e) => handleKeyEvent(e, 'passwordConfirm')}
             className={errors.passwordConfirm ? 'error' : ''}
@@ -288,81 +281,20 @@ const RegisterForm = ({ onSuccess, onError }) => {
             disabled={isLoading}
           />
           {errors.passwordConfirm && <span className="error-text">{errors.passwordConfirm}</span>}
-          
-          {similarityScore > 0 && (
-            <div className={`similarity-indicator ${similarityScore >= 0.8 ? 'good' : 'bad'}`}>
-              타이핑 패턴 유사도: {(similarityScore * 100).toFixed(1)}%
-              {similarityScore >= 0.8 ? ' ✓' : ' ✗'}
-            </div>
-          )}
         </div>
-        
-        {isCollectingPattern && (
-          <div className="pattern-collection-info">
-            <div className="progress-indicator">
-              <div className={`step ${patternCollectionStep >= 0 ? 'active' : ''}`}>1</div>
-              <div className={`step ${patternCollectionStep >= 1 ? 'active' : ''}`}>2</div>
-            </div>
-            <p>{getPatternCollectionMessage()}</p>
-          </div>
-        )}
         
         <div className="form-actions">
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={isLoading || similarityScore < 0.8}
+            disabled={isLoading}
           >
             {isLoading ? '가입 중...' : '회원가입'}
           </button>
         </div>
       </form>
       
-      {/* 유사도 낮음 팝업 */}
-      {showSimilarityPopup && (
-        <div className="similarity-popup-overlay">
-          <div className="similarity-popup">
-            <div className="popup-header">
-              <h3>타이핑 패턴 불일치</h3>
-              <button 
-                className="close-btn"
-                onClick={() => setShowSimilarityPopup(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="popup-content">
-              <div className="similarity-warning">
-                <p>현재 타이핑 패턴 유사도: <strong>{(similarityScore * 100).toFixed(1)}%</strong></p>
-                <p>보안을 위해 타이핑 패턴 유사도가 80% 이상일 때만 회원가입이 가능합니다.</p>
-                <p>다시 입력해주세요.</p>
-              </div>
-              <div className="popup-actions">
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setShowSimilarityPopup(false);
-                    setFormData(prev => ({ ...prev, passwordConfirm: '' }));
-                    setTypingPatterns(prev => ({ ...prev, passwordConfirm: [] }));
-                    setSimilarityScore(0);
-                    passwordConfirmRef.current?.focus();
-                  }}
-                >
-                  다시 입력하기
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="debug-info">
-        <h4>디버그 정보</h4>
-        <p>패턴 수집 상태: {isCollectingPattern ? '활성' : '비활성'}</p>
-        <p>비밀번호 패턴: {typingPatterns.password.length}개</p>
-        <p>재입력 패턴: {typingPatterns.passwordConfirm.length}개</p>
-        <p>유사도 점수: {(similarityScore * 100).toFixed(1)}%</p>
-      </div>
+
     </div>
   );
 };

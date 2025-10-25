@@ -918,6 +918,203 @@ textarea:focus {
   min-width: 150px;
 }
 
+/* OTP 인증 컴포넌트 */
+.otp-verification {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: var(--spacing-xl);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.otp-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.otp-header h3 {
+  color: var(--error-color);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-xl);
+}
+
+.otp-header p {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.otp-form {
+  margin-bottom: var(--spacing-lg);
+}
+
+.otp-form .form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.otp-form input {
+  text-align: center;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  padding: var(--spacing-lg);
+}
+
+.otp-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.otp-actions .btn {
+  min-width: 120px;
+}
+
+.otp-info {
+  background: var(--bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+}
+
+.otp-info p {
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.otp-footer {
+  text-align: center;
+}
+
+.otp-footer .btn-link {
+  color: var(--text-secondary);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: var(--spacing-sm);
+}
+
+.otp-footer .btn-link:hover {
+  color: var(--text-primary);
+}
+
+/* OTP 차단 상태 */
+.otp-verification-blocked {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: var(--spacing-xl);
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.blocked-content {
+  padding: var(--spacing-lg);
+}
+
+.blocked-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.blocked-content h3 {
+  color: var(--error-color);
+  margin-bottom: var(--spacing-md);
+}
+
+.blocked-content p {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.block-timer {
+  background: var(--bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+}
+
+/* 확장 프로그램 제어 */
+.extension-controls {
+  background: var(--bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-top: var(--spacing-md);
+}
+
+.extension-controls h5 {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.extension-controls .btn {
+  margin-right: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* 모달 오버레이 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideIn 0.3s ease-out;
+}
+
+/* 차단 배너 */
+.blocked-banner {
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  color: white;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+  border-left: 4px solid #ff0000;
+}
+
+.blocked-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.blocked-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.blocked-text h3 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.blocked-text p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: var(--font-size-sm);
+}
+
 /* 스크롤바 스타일링 */
 ::-webkit-scrollbar {
   width: 8px;
@@ -934,4 +1131,57 @@ textarea:focus {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* OTP 유예 기간 스타일 */
+.grace-period-info {
+  background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+  border: 2px solid var(--success-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-md) 0;
+  animation: gracePeriodPulse 2s ease-in-out infinite;
+}
+
+.grace-period-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.grace-period-indicator .check-icon {
+  font-size: var(--font-size-lg);
+  animation: checkBounce 1s ease-in-out infinite;
+}
+
+.grace-period-indicator span {
+  font-weight: 600;
+  color: var(--success-color);
+  font-size: var(--font-size-md);
+}
+
+.grace-period-info p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  font-style: italic;
+}
+
+@keyframes gracePeriodPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);
+  }
+}
+
+@keyframes checkBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }

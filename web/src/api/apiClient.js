@@ -4,7 +4,7 @@
 console.log('API 클라이언트 로드됨');
 
 // 환경 변수에서 API 기본 URL 가져오기
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.10:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://210.119.108.227:8080';
 
 console.log('API 기본 URL:', API_BASE);
 
