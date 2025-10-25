@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "AI Continuous Authentication",
+  "version": "1.0.0",
+  "description": "AI 기반 연속 인증 시스템 - 행동 패턴 분석을 통한 보안 강화",
+  
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  
+  "host_permissions": [
+    "http://192.168.0.*/*",
+    "https://*/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI 인증 상태"
+  }
+  
+}

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 인증 상태</title>
+  <style>
+    body {
+      width: 350px;
+      min-height: 200px;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .header {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 15px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .status-container {
+      padding: 20px;
+    }
+    
+    .status-card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-normal { background: #4CAF50; }
+    .status-suspicious { background: #FF9800; }
+    .status-blocked { background: #F44336; }
+    .status-unknown { background: #9E9E9E; }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .status-text {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .anomaly-score {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 5px;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .info-item {
+      text-align: center;
+    }
+    
+    .info-label {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-bottom: 2px;
+    }
+    
+    .info-value {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .btn-primary:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+      opacity: 0.7;
+    }
+    
+    .error {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid rgba(244, 67, 54, 0.3);
+      color: #ffcdd2;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    
+    .footer {
+      padding: 10px 15px;
+      text-align: center;
+      font-size: 11px;
+      opacity: 0.6;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛡️ AI 인증 상태</h1>
+  </div>
+  
+  <div class="status-container">
+    <div id="loading" class="loading">
+      상태 로딩 중...
+    </div>
+    
+    <div id="status-content" style="display: none;">
+      <div class="status-card">
+        <div class="status-indicator">
+          <div id="status-dot" class="status-dot status-unknown"></div>
+          <div class="status-text" id="status-text">상태 확인 중</div>
+        </div>
+        <div class="anomaly-score" id="anomaly-score">이상 점수: 0%</div>
+        
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">모니터링</div>
+            <div class="info-value" id="monitoring-status">활성</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">세션 시간</div>
+            <div class="info-value" id="session-time">0분</div>
+          </div>
+        </div>
+        
+        <div class="actions">
+          <button id="refresh-btn" class="btn btn-primary">새로고침</button>
+          <button id="toggle-btn" class="btn btn-secondary">모니터링 토글</button>
+        </div>
+      </div>
+      
+      <div id="error-message" class="error" style="display: none;"></div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    AI 기반 연속 인증 시스템 v1.0
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
