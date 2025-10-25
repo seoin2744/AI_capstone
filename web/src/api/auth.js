@@ -6,50 +6,6 @@ console.log('인증 API 서비스 로드됨');
 import { apiPost, apiGet } from './apiClient.js';
 import { convertTypingPatternToVector } from './user.js';
 
-// 행동 패턴 예측 요청
-export async function predictBehavior(payload) {
-  console.log('행동 패턴 예측 요청:', payload);
-  
-  try {
-    // 필수 필드 검증
-    if (!payload.user_id) {
-      throw new Error('사용자 ID가 필요합니다.');
-    }
-    
-    if (!payload.keystroke_vector) {
-      throw new Error('키스트로크 벡터 데이터가 필요합니다.');
-    }
-    
-    // 서버에 전송할 데이터 준비
-    const predictionData = {
-      user_id: payload.user_id,
-      keystroke_vector: payload.keystroke_vector
-    };
-    
-    console.log('예측 데이터 준비 완료:', predictionData);
-    
-    const response = await apiPost('/auth/predict', predictionData);
-    
-    if (response.success) {
-      console.log('행동 패턴 예측 성공:', response.data);
-      
-      return {
-        success: true,
-        isAnomalous: response.data.is_anomalous || false,
-        data: response.data
-      };
-    } else {
-      throw new Error(response.error || '행동 패턴 예측에 실패했습니다.');
-    }
-    
-  } catch (error) {
-    console.error('행동 패턴 예측 오류:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
 
 // 이메일 인증 요청
 export async function verifyEmail(verificationData) {
@@ -81,6 +37,56 @@ export async function verifyEmail(verificationData) {
       success: false,
       error: error.message,
       verified: false
+    };
+  }
+}
+
+// 키스트로크 데이터 학습 요청
+export async function trainKeystrokeData(userId, vectors) {
+  console.log('🎯 키스트로크 데이터 학습 요청 시작');
+  console.log('👤 사용자 ID:', userId);
+  console.log('📊 벡터 개수:', vectors.length);
+  console.log('📋 벡터 데이터:', vectors);
+  
+  try {
+    // 필수 필드 검증
+    if (!userId) {
+      throw new Error('사용자 ID가 필요합니다.');
+    }
+    
+    if (!vectors || !Array.isArray(vectors) || vectors.length === 0) {
+      throw new Error('학습할 벡터 데이터가 필요합니다.');
+    }
+    
+    // 서버에 전송할 데이터 준비
+    const trainingData = {
+      user_id: userId,
+      vectors: [vectors] // 3차원 배열: 각 입력 세션을 배열로 감싸기
+    };
+    
+    console.log('📦 학습 데이터 준비 완료:', trainingData);
+    console.log('📤 API 호출 시작: /keystroke/train');
+    
+    const response = await apiPost('/keystroke/train', trainingData);
+    
+    if (response.success) {
+      console.log('✅ 키스트로크 데이터 학습 성공:', response.data);
+      return {
+        success: true,
+        isAcceptable: response.data.is_acceptable || false,
+        message: '학습 데이터가 성공적으로 저장되었습니다.',
+        data: response.data
+      };
+    } else {
+      throw new Error(response.error || '키스트로크 데이터 학습에 실패했습니다.');
+    }
+    
+  } catch (error) {
+    console.error('❌ 키스트로크 데이터 학습 오류:', error);
+    return {
+      success: false,
+      error: error.message,
+      isAcceptable: false
     };
   }
 }
@@ -140,12 +146,22 @@ export async function attemptLogin(loginData) {
         localStorage.setItem('user_email', loginData.email);
       }
       
+      // 성공적인 로그인 시 학습 데이터 전송
+      const anomalyScore = response.data.anomaly_score || 0;
+      const requiresEmailVerification = response.data.requires_email_verification || false;
+      
+      // 정상적인 로그인이고 이메일 인증이 필요 없는 경우에만 학습 데이터 전송
+      if (anomalyScore < 0.5 && !requiresEmailVerification && typingVector.length > 0) {
+        console.log('✅ 정상적인 로그인 - 학습 데이터 전송 시작');
+        await trainKeystrokeData(response.data.user_id, [typingVector]);
+      }
+      
       return {
         success: true,
         user: response.data.user,
         token: response.data.token,
-        anomalyScore: response.data.anomaly_score || 0,
-        requiresEmailVerification: response.data.requires_email_verification || false,
+        anomalyScore: anomalyScore,
+        requiresEmailVerification: requiresEmailVerification,
         message: '로그인에 성공했습니다.'
       };
     } else {
@@ -162,33 +178,32 @@ export async function attemptLogin(loginData) {
   }
 }
 
-// 인증 상태 확인
-export async function checkAuthStatus(userId) {
-  console.log('인증 상태 확인:', userId);
+// 사용자 모델 학습 상태 확인
+export async function checkModelTrainingStatus(userId) {
+  console.log('사용자 모델 학습 상태 확인:', userId);
   
   try {
-    const response = await apiGet(`/auth/status/${userId}`);
+    const response = await apiGet(`/auth/model-status/${userId}`);
     
     if (response.success) {
-      console.log('인증 상태 확인 성공:', response.data);
+      console.log('모델 학습 상태 확인 성공:', response.data);
       
       return {
         success: true,
-        status: response.data.status,
-        lastActivity: response.data.last_activity,
-        anomalyScore: response.data.anomaly_score || 0,
-        requiresVerification: response.data.requires_verification || false
+        isTrained: response.data.is_trained || false,
+        trainingDataCount: response.data.training_data_count || 0,
+        lastTrainingDate: response.data.last_training_date
       };
     } else {
-      throw new Error(response.error || '인증 상태 확인에 실패했습니다.');
+      throw new Error(response.error || '모델 학습 상태 확인에 실패했습니다.');
     }
     
   } catch (error) {
-    console.error('인증 상태 확인 오류:', error);
+    console.error('모델 학습 상태 확인 오류:', error);
     return {
       success: false,
       error: error.message,
-      status: 'unknown'
+      isTrained: false
     };
   }
 }
@@ -270,15 +285,16 @@ export function validateBehaviorData(data) {
 // 디버깅을 위한 전역 함수 노출
 if (import.meta.env.VITE_DEBUG_MODE === 'true') {
   window.authApiDebug = {
-    predictBehavior,
     verifyEmail,
     attemptLogin,
     checkAuthStatus,
+    checkModelTrainingStatus,
     getAuthToken,
     isAuthenticated,
     clearAuthToken,
     getAnomalyStatus,
-    validateBehaviorData
+    validateBehaviorData,
+    trainKeystrokeData
   };
 }
 

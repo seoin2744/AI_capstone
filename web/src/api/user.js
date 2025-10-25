@@ -15,39 +15,19 @@ export async function registerUser(userData) {
       throw new Error('이메일과 비밀번호는 필수입니다.');
     }
     
-    // 비밀번호 재입력 검증
-    if (userData.password !== userData.passwordConfirm) {
-      throw new Error('비밀번호가 일치하지 않습니다.');
-    }
-    
     // 비밀번호 강도 검증
     if (userData.password.length < 10) {
       throw new Error('비밀번호는 최소 10자 이상이어야 합니다.');
     }
     
-    // 벡터를 2차원 배열로 변환 (평균값 계산)
-    const typingVector = userData.typing_pattern || [];
-    if (typingVector.length === 0) {
-      throw new Error('타이핑 패턴 데이터가 필요합니다.');
+    // keystroke_vector 검증
+    if (!userData.keystroke_vector || !Array.isArray(userData.keystroke_vector)) {
+      throw new Error('키스트로크 벡터 데이터가 필요합니다.');
     }
     
-    // 2차원 배열에서 Dwell Time과 Flight Time 분리
-    // 배열 구조: [[dwell1, flight1], [dwell2, flight2], ...]
-    const dwellTimes = typingVector.map(v => v[0]);
-    const flightTimes = typingVector.map(v => v[1]).filter(t => t > 0); // 0은 제외
+    const keystrokeVector = userData.keystroke_vector;
     
-    const dwellTimeAvg = dwellTimes.reduce((sum, val) => sum + val, 0) / dwellTimes.length / 1000; // 밀리초를 초로 변환
-    const flightTimeAvg = flightTimes.length > 0 
-      ? flightTimes.reduce((sum, val) => sum + val, 0) / flightTimes.length / 1000 // 밀리초를 초로 변환
-      : 0;
-    
-    const keystrokeVector = [dwellTimeAvg, flightTimeAvg];
-    
-    console.log('타이핑 패턴 분석:', {
-      'Dwell Time 평균': `${dwellTimeAvg.toFixed(3)}초`,
-      'Flight Time 평균': `${flightTimeAvg.toFixed(3)}초`,
-      'keystroke_vector': keystrokeVector
-    });
+    console.log('키스트로크 벡터:', keystrokeVector);
     
     // 비밀번호 해시 (SHA-256)
     const passwordHash = await sha256(userData.password);
@@ -252,47 +232,56 @@ export function isAuthenticated() {
 
 // 타이핑 패턴을 2차원 배열 벡터로 변환 (API 요구사항에 맞춤)
 export function convertTypingPatternToVector(typingPattern) {
-  console.log('타이핑 패턴을 벡터로 변환:', typingPattern);
+  console.log('🔄 타이핑 패턴을 벡터로 변환 시작');
+  console.log('📝 입력 패턴 길이:', typingPattern.length);
   
   if (!typingPattern || typingPattern.length === 0) {
+    console.log('⚠️ 빈 패턴 - 빈 배열 반환');
     return [];
   }
   
   try {
     const vector = [];
     
-    // 키 다운/업 쌍 찾기 (개선된 로직)
+    // 키 다운/업 쌍 찾기 (모든 키 쌍 처리)
     const keyPairs = [];
-    const processedKeys = new Set();
+    const processedKeyUpEvents = new Set(); // 이미 처리된 키업 이벤트 추적
     
     // 모든 키 다운 이벤트를 먼저 수집
     const keyDownEvents = typingPattern.filter(event => event.type === 'keydown');
+    console.log('⌨️ 키 다운 이벤트 수:', keyDownEvents.length);
     
     for (const keyDownEvent of keyDownEvents) {
       const key = keyDownEvent.key;
       
-      // 이미 처리된 키는 건너뛰기
-      if (processedKeys.has(key)) continue;
-      
-      // 해당 키의 키 업 이벤트 찾기
+      // 해당 키의 키 업 이벤트 찾기 (아직 처리되지 않은 것 중 가장 가까운 것)
       const keyUpEvent = typingPattern.find(event => 
         event.type === 'keyup' && 
         event.key === key && 
-        event.timestamp > keyDownEvent.timestamp
+        event.timestamp > keyDownEvent.timestamp &&
+        !processedKeyUpEvents.has(event.timestamp) // 아직 처리되지 않은 키업 이벤트
       );
       
       if (keyUpEvent) {
+        const pressTime = keyUpEvent.timestamp - keyDownEvent.timestamp;
         keyPairs.push({
           key: key,
-          pressTime: keyUpEvent.timestamp - keyDownEvent.timestamp,
+          pressTime: pressTime,
           timestamp: keyDownEvent.timestamp
         });
-        processedKeys.add(key);
+        
+        // 처리된 키업 이벤트를 추적에 추가
+        processedKeyUpEvents.add(keyUpEvent.timestamp);
+        
+        console.log(`🔑 키 쌍 발견: ${key} (누름시간: ${pressTime}ms)`);
+      } else {
+        console.log(`⚠️ 키 업 이벤트 없음: ${key}`);
       }
     }
     
     // 타임스탬프 순으로 정렬
     keyPairs.sort((a, b) => a.timestamp - b.timestamp);
+    console.log('📊 정렬된 키 쌍 수:', keyPairs.length);
     
     // 각 키 쌍을 벡터로 변환 (2차원 배열)
     for (let i = 0; i < keyPairs.length; i++) {
@@ -307,21 +296,25 @@ export function convertTypingPatternToVector(typingPattern) {
         flightTime = pair.timestamp - keyPairs[i-1].timestamp;
       }
       
-      // 벡터 요소: [Dwell Time (ms), Flight Time (ms)]
-      vector.push([dwellTime, flightTime]);
+      // 벡터 요소: [Dwell Time (ms), Flight Time (ms)] - 명시적으로 실수로 변환
+      const vectorElement = [parseFloat(dwellTime.toFixed(1)), parseFloat(flightTime.toFixed(1))];
+      vector.push(vectorElement);
+      
+      console.log(`📐 벡터 ${i + 1}: [${vectorElement[0]}, ${vectorElement[1]}] (키: ${pair.key})`);
     }
     
-    console.log('타이핑 패턴 분석:');
-    console.log('  전체 이벤트 수:', typingPattern.length);
-    console.log('  키 다운 이벤트 수:', keyDownEvents.length);
-    console.log('  찾은 키 쌍 수:', keyPairs.length);
-    console.log('  키 쌍 상세:', keyPairs.map(pair => `${pair.key}: ${pair.pressTime}ms`));
+    console.log('🎯 타이핑 패턴 분석 완료:');
+    console.log('  📊 전체 이벤트 수:', typingPattern.length);
+    console.log('  ⌨️ 키 다운 이벤트 수:', keyDownEvents.length);
+    console.log('  🔗 찾은 키 쌍 수:', keyPairs.length);
+    console.log('  📋 키 쌍 상세:', keyPairs.map(pair => `${pair.key}: ${pair.pressTime}ms`));
+    console.log('  📐 변환된 벡터 (2차원 배열):', vector);
+    console.log('  📊 최종 벡터 개수:', vector.length);
     
-    console.log('변환된 벡터 (2차원 배열):', vector);
     return vector;
     
   } catch (error) {
-    console.error('타이핑 패턴 벡터 변환 오류:', error);
+    console.error('💥 타이핑 패턴 벡터 변환 오류:', error);
     return [];
   }
 }

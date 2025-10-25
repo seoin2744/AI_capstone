@@ -39,11 +39,31 @@ export class ApiError extends Error {
 export async function apiFetch(path, options = {}) {
   const url = `${API_BASE}${path}`;
   
-  console.log('API 요청:', {
-    url,
-    method: options.method || 'GET',
-    body: options.body
-  });
+  // 터미널과 브라우저 콘솔 모두에 출력
+  console.log('🔵 API 요청 시작');
+  console.log('📍 URL:', url);
+  console.log('🔧 Method:', options.method || 'GET');
+  console.log('📤 Headers:', DEFAULT_HEADERS);
+  
+  // 요청 Body 상세 로깅
+  if (options.body) {
+    console.log('📦 요청 Body (원본):', options.body);
+    try {
+      const parsedBody = JSON.parse(options.body);
+      console.log('📦 요청 Body (파싱됨):', parsedBody);
+      
+      // 키스트로크 벡터 데이터 특별 로깅
+      if (parsedBody.vectors && Array.isArray(parsedBody.vectors)) {
+        console.log('⌨️ 키스트로크 벡터 데이터:');
+        console.log('  - 벡터 개수:', parsedBody.vectors.length);
+        console.log('  - 첫 번째 벡터:', parsedBody.vectors[0]);
+        console.log('  - 마지막 벡터:', parsedBody.vectors[parsedBody.vectors.length - 1]);
+        console.log('  - 전체 벡터:', parsedBody.vectors);
+      }
+    } catch (e) {
+      console.log('📦 요청 Body 파싱 실패:', e.message);
+    }
+  }
   
   try {
     const response = await fetch(url, {
@@ -51,12 +71,20 @@ export async function apiFetch(path, options = {}) {
       ...options
     });
     
-    console.log('API 응답 상태:', response.status);
+    console.log('📊 API 응답 상태:', response.status);
     
     // 응답이 성공적이지 않은 경우
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API 오류 응답:', errorText);
+      console.error('❌ API 오류 응답:', errorText);
+      
+      // 오류 응답도 파싱 시도
+      try {
+        const errorData = JSON.parse(errorText);
+        console.error('❌ 오류 데이터 (파싱됨):', errorData);
+      } catch (e) {
+        console.error('❌ 오류 데이터 파싱 실패:', e.message);
+      }
       
       throw new ApiError(
         `API 요청 실패: ${response.status} ${response.statusText}`,
@@ -67,12 +95,12 @@ export async function apiFetch(path, options = {}) {
     
     // JSON 응답 파싱
     const data = await response.json();
-    console.log('API 응답 데이터:', data);
+    console.log('✅ API 응답 데이터:', data);
     
     return new ApiResponse(true, data, null, response.status);
     
   } catch (error) {
-    console.error('API 요청 중 오류:', error);
+    console.error('💥 API 요청 중 오류:', error);
     
     if (error instanceof ApiError) {
       throw error;
